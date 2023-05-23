@@ -1,10 +1,10 @@
 #ifndef pizza_h
 #define pizza_h
 
-#define Ncook 10
-#define Noven 15
-#define Npacker 2
-#define Ndeliverer 10
+int Ncook = 10;
+int Noven = 15;
+int Npacker = 2;
+int Ndeliverer = 10;
 #define Torderlow 1
 #define Torderhigh 3
 #define Norderlow 1
@@ -20,6 +20,14 @@
 #define Tpack 1
 #define Tdellow 5
 #define Tdelhigh 15
+
+unsigned int seed;
+int Ncust;
+int profit = 0;
+int countPlain = 0;
+int countSpecial = 0;
+int countSuccess = 0;
+int countFail = 0;
 
 
 #endif
