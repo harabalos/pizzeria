@@ -21,6 +21,7 @@ int Ndeliverer = 10;
 #define Tdellow 5
 #define Tdelhigh 15
 
+int rc;
 unsigned int seed;
 int Ncust;
 int profit = 0;
@@ -29,8 +30,14 @@ int countSpecial = 0;
 int countSuccess = 0;
 int countFail = 0;
 
-struct timespec start_time, end_timeX, end_timeY;
+struct timespec start_time,start_time_cooling, end_timeX, end_timeY;
 long secondsX;
 long secondsY;
+long secondsCooling;
+long coolingTime = 0;
+long sumTime = 0;
+long maxTime = 0;
+long maxTimeCooling = 0;
+long avgTime = 0;
+long avgTimeCooling = 0;
 #endif
-

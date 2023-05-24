@@ -9,12 +9,10 @@
 pthread_mutex_t lock;
 pthread_cond_t cond;
 
-
 // Thread function to process an order
 void *order(void *x){
 
     int id = *(int *)x; //Extracting the ID of the order
-    int rc;
     printf("Order %d started\n", id);
     
     int numberOfPizzas = rand_r(&seed) % (Norderlow + Norderhigh);
@@ -65,6 +63,7 @@ void *order(void *x){
     
     Ncook++;
     sleep(Tbake);
+    clock_gettime(CLOCK_REALTIME,&start_time_cooling);
     
     rc = pthread_mutex_lock(&lock); // Acquiring the lock
     while (Npacker == 0) { // While there are no available resources
@@ -96,9 +95,24 @@ void *order(void *x){
     //Y time
     clock_gettime(CLOCK_REALTIME,&end_timeY);
     secondsY = end_timeY.tv_sec - start_time.tv_sec;
+    secondsCooling = end_timeY.tv_sec - start_time_cooling.tv_sec;
     printf("Order %d has been delived in %ld minutes\n",id, secondsY);
     sleep(deliveryTime);
     Ndeliverer++;
+    
+    //total time
+    sumTime+= secondsY;
+    coolingTime+=secondsCooling;
+
+    //Man time
+    if (secondsY > maxTime) {
+        maxTime = secondsY;
+    }
+    
+    if (secondsCooling > maxTimeCooling) {
+        maxTimeCooling = secondsCooling;
+    }
+    
     
     rc = pthread_cond_signal(&cond); // Signaling a waiting thread
 
@@ -134,9 +148,22 @@ int main(int argc, char *argv[])  {
     for (int i = 0; i < Ncust; i++) {
         pthread_join(threads[i], NULL); // Waiting for all threads to finish
     }
+    
+    printf("\n-- Overall Statistics --\n");
+    printf("Total profit: %d\n", profit);
+    printf("Number of plain pizzas sold: %d\n", countPlain);
+    printf("Number of special pizzas sold: %d\n", countSpecial);
+    printf("Successful orders: %d\n", countSuccess);
+    printf("Failed orders: %d\n", countFail);
+    avgTime = sumTime / countSuccess;
+    printf("Average service time : %ld\n",avgTime);
+    printf("Max service time : %ld\n",maxTime);
+    avgTimeCooling = coolingTime / countSuccess;
+    printf("Average cooling time : %ld\n",avgTimeCooling);
+    printf("Max cooling time : %ld\n",maxTimeCooling);
 
-    pthread_mutex_destroy(&lock); // Destroying the mutex
-    pthread_cond_destroy(&cond); // Destroying the condition variable
+    pthread_mutex_destroy(&lock);
+    pthread_cond_destroy(&cond);
 
     return 0;
 
