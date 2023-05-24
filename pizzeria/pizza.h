@@ -29,6 +29,8 @@ int countSpecial = 0;
 int countSuccess = 0;
 int countFail = 0;
 
-
+struct timespec start_time, end_timeX, end_timeY;
+long secondsX;
+long secondsY;
 #endif
 
