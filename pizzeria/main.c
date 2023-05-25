@@ -1,123 +1,42 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "pizza.h"
 #include <pthread.h>
+#include "pizza.h"
 #include <unistd.h>
 #include <time.h>
 
 
-pthread_mutex_t lock;
-pthread_cond_t cond;
+int Ncook = 10;
+int Noven = 15;
+int Npacker = 2;
+int Ndeliverer = 10;
+int Torderlow = 1;
+int Torderhigh = 3;
+int Norderlow = 1;
+int Norderhigh = 5;
+double Pplain = 0.6;
+int Tpaymentlow = 1;
+int Tpaymenthigh = 3;
+double Pfail = 0.1;
+int Cplain = 10;
+int Cspecial = 12;
+int Tprep = 1;
+int Tbake = 10;
+int Tpack = 1;
+int Tdellow = 5;
+int Tdelhigh = 15;
+int profit = 0;
+int countPlain = 0;
+int countSpecial = 0;
+int countSuccess = 0;
+int countFail = 0;
+long coolingTime = 0;
+long sumTime = 0;
+long maxTime = 0;
+long maxTimeCooling = 0;
+long avgTime = 0;
+long avgTimeCooling = 0;
 
-// Thread function to process an order
-void *order(void *x){
-
-    int id = *(int *)x; //Extracting the ID of the order
-    printf("Order %d started\n", id);
-    
-    int numberOfPizzas = rand_r(&seed) % (Norderlow + Norderhigh);
-    int pizzas[numberOfPizzas];
-    int paymentTime = rand_r(&seed) % (Tpaymenthigh - Tpaymentlow + 1) + Tpaymentlow;
-    double acceptedCard = (double)rand_r(&seed) / RAND_MAX;
-    
-    if(acceptedCard > Pfail){
-        printf("The order %d has been accepted!\n",id);
-        countSuccess++;
-        for (int i = 0; i < numberOfPizzas; i++) {
-            double kindOfPizza = (double)rand_r(&seed) / RAND_MAX; // tells the type of pizzas of each costumer
-            if(kindOfPizza<Pplain){
-                pizzas[i] = 0; // 0 for plain pizzas
-                profit+=Cplain;
-                countPlain++;
-            }else{
-                pizzas[i] = 1;//1 for special pizzas
-                profit+=Cspecial;
-                countSpecial++;
-            }
-        }
-    }else{
-        printf("The order %d has been declined!\n",id);
-        countFail++;
-        pthread_exit(NULL);
-    }
-    
-    rc = pthread_mutex_lock(&lock); // Acquiring the lock
-    while (Ncook == 0) { // While there are no available resources
-        printf("Order %d did not find available cook. Blocked...\n", id);
-        rc = pthread_cond_wait(&cond, &lock); // Waiting on the condition variable
-    }
-    printf("Order %d is being prepared.\n", id);
-    Ncook--; // Decreasing the number of available resources
-    rc = pthread_mutex_unlock(&lock); // Releasing the lock
-
-    sleep(Tprep);
-
-    rc = pthread_mutex_lock(&lock); // Acquiring the lock
-    while (Noven < numberOfPizzas) { // While there are no available resources
-        printf("Order %d did not find available ovens for all the pizzas at the same time. Blocked...\n", id);
-        rc = pthread_cond_wait(&cond, &lock); // Waiting on the condition variable
-    }
-    printf("Order %d is cooking.\n", id);
-    Noven-=numberOfPizzas; // Decreasing the number of available resources
-    rc = pthread_mutex_unlock(&lock); // Releasing the lock
-    
-    Ncook++;
-    sleep(Tbake);
-    clock_gettime(CLOCK_REALTIME,&start_time_cooling);
-    
-    rc = pthread_mutex_lock(&lock); // Acquiring the lock
-    while (Npacker == 0) { // While there are no available resources
-        printf("Order %d did not find available packer. Blocked...\n", id);
-        rc = pthread_cond_wait(&cond, &lock); // Waiting on the condition variable
-    }
-    Npacker--; // Decreasing the number of available resources
-    rc = pthread_mutex_unlock(&lock); // Releasing the lock
-
-    sleep(Tpack * numberOfPizzas);
-    //X time
-    clock_gettime(CLOCK_REALTIME,&end_timeX);
-    secondsX = end_timeX.tv_sec - start_time.tv_sec;
-    printf("Order %d has been prepared in %ld minutes\n",id,secondsX);
-    Npacker++;
-    Noven+=numberOfPizzas;
-
-    
-    int deliveryTime = rand_r(&seed) % (Tdelhigh - Tdellow + 1) + Tdellow;
-    rc = pthread_mutex_lock(&lock); // Acquiring the lock
-    while (Ndeliverer == 0) { // While there are no available resources
-        printf("Order %d did not find available deliverer. Blocked...\n", id);
-        rc = pthread_cond_wait(&cond, &lock); // Waiting on the condition variable
-    }
-    Ndeliverer--; // Decreasing the number of available resources
-    rc = pthread_mutex_unlock(&lock); // Releasing the lock
-    
-    sleep(deliveryTime);
-    //Y time
-    clock_gettime(CLOCK_REALTIME,&end_timeY);
-    secondsY = end_timeY.tv_sec - start_time.tv_sec;
-    secondsCooling = end_timeY.tv_sec - start_time_cooling.tv_sec;
-    printf("Order %d has been delived in %ld minutes\n",id, secondsY);
-    sleep(deliveryTime);
-    Ndeliverer++;
-    
-    //total time
-    sumTime+= secondsY;
-    coolingTime+=secondsCooling;
-
-    //Man time
-    if (secondsY > maxTime) {
-        maxTime = secondsY;
-    }
-    
-    if (secondsCooling > maxTimeCooling) {
-        maxTimeCooling = secondsCooling;
-    }
-    
-    
-    rc = pthread_cond_signal(&cond); // Signaling a waiting thread
-
-    pthread_exit(NULL);
-}
 
 int main(int argc, char *argv[])  {
 
@@ -131,8 +50,8 @@ int main(int argc, char *argv[])  {
     int id[Ncust];
     pthread_t threads[Ncust];
 
-    pthread_mutex_init(&lock, NULL); // Initializing the mutex
-    pthread_cond_init(&cond, NULL); // Initializing the condition variable
+    pthread_mutex_init(&lock, NULL);
+    pthread_cond_init(&cond, NULL);
 
 
     for (int i = 0; i < Ncust; i++) {
@@ -140,27 +59,17 @@ int main(int argc, char *argv[])  {
         clock_gettime(CLOCK_REALTIME,&start_time);
         id[i] = i+1;
         printf("Customer %d is ordering.\n", i+1);
-        rc = pthread_create(&threads[i], NULL, order, &id[i]); // Creating a thread for each order
+        rc = pthread_create(&threads[i], NULL, order, &id[i]);
         int nextCustomer = rand_r(&seed) % Torderhigh + Torderlow;
         sleep(nextCustomer);
     }
 
     for (int i = 0; i < Ncust; i++) {
-        pthread_join(threads[i], NULL); // Waiting for all threads to finish
+        pthread_join(threads[i], NULL);
     }
-    
-    printf("\n-- Overall Statistics --\n");
-    printf("Total profit: %d\n", profit);
-    printf("Number of plain pizzas sold: %d\n", countPlain);
-    printf("Number of special pizzas sold: %d\n", countSpecial);
-    printf("Successful orders: %d\n", countSuccess);
-    printf("Failed orders: %d\n", countFail);
     avgTime = sumTime / countSuccess;
-    printf("Average service time : %ld\n",avgTime);
-    printf("Max service time : %ld\n",maxTime);
     avgTimeCooling = coolingTime / countSuccess;
-    printf("Average cooling time : %ld\n",avgTimeCooling);
-    printf("Max cooling time : %ld\n",maxTimeCooling);
+    printStatistics();
 
     pthread_mutex_destroy(&lock);
     pthread_cond_destroy(&cond);
