@@ -7,7 +7,8 @@ pthread_cond_t cond;
 void *order(void *x);
 void printStatistics(void);
 void findMax(long sec, long* max);
-
+void acceptOrder(int id, int numberOfPizzas, int pizzas []);
+void declineOrder(int id);
 extern int Ncook;
 extern int Noven;
 extern int Npacker;

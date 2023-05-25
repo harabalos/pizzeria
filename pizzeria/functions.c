@@ -16,24 +16,9 @@ void *order(void *x){
     double acceptedCard = (double)rand_r(&seed) / RAND_MAX;
     
     if(acceptedCard > Pfail){
-        printf("The order %d has been accepted!\n",id);
-        countSuccess++;
-        for (int i = 0; i < numberOfPizzas; i++) {
-            double kindOfPizza = (double)rand_r(&seed) / RAND_MAX;
-            if(kindOfPizza<Pplain){
-                pizzas[i] = 0; // 0 for plain pizzas
-                profit+=Cplain;
-                countPlain++;
-            }else{
-                pizzas[i] = 1;//1 for special pizzas
-                profit+=Cspecial;
-                countSpecial++;
-            }
-        }
+        acceptOrder(id,numberOfPizzas,&pizzas[numberOfPizzas]);
     }else{
-        printf("The order %d has been declined!\n",id);
-        countFail++;
-        pthread_exit(NULL);
+        declineOrder(id);
     }
     
     rc = pthread_mutex_lock(&lock);
@@ -125,4 +110,29 @@ void printStatistics(void){
     printf("Max service time : %ld\n",maxTime);
     printf("Average cooling time : %ld\n",avgTimeCooling);
     printf("Max cooling time : %ld\n",maxTimeCooling);
+}
+
+
+void acceptOrder(int id, int numberOfPizzas, int pizzas []) {
+    printf("The order %d has been accepted!\n", id);
+    countSuccess++;
+    for (int i = 0; i < numberOfPizzas; i++) {
+        double kindOfPizza = (double)rand_r(&seed) / RAND_MAX;
+        if(kindOfPizza < Pplain){
+            pizzas[i] = 0; // 0 for plain pizzas
+            profit += Cplain;
+            countPlain++;
+        } else {
+            pizzas[i] = 1; // 1 for special pizzas
+            profit += Cspecial;
+            countSpecial++;
+        }
+    }
+}
+
+
+void declineOrder(int id) {
+    printf("The order %d has been declined!\n", id);
+    countFail++;
+    pthread_exit(NULL);
 }
