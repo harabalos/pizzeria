@@ -1,9 +1,21 @@
 #ifndef pizza_h
 #define pizza_h
 
-pthread_mutex_t lock_cook, lock_oven, lock_packer, lock_deliverer, lock_statistics, lock_output;
-pthread_cond_t cond_cook, cond_oven, cond_packer, cond_deliverer;
+#include <pthread.h>
 
+//Mutexes and conditions
+pthread_mutex_t lock_cook;         //Mutex for cook
+pthread_mutex_t lock_oven;         //Mutex for oven
+pthread_mutex_t lock_packer;       //Mutex for packer
+pthread_mutex_t lock_deliverer;    //Mutex for deliverer
+pthread_mutex_t lock_statistics;   //Mutex for statistics
+pthread_mutex_t lock_output;       //Mutex for output
+pthread_cond_t cond_cook;          //Condition variable for cook
+pthread_cond_t cond_oven;          //Condition variable for oven
+pthread_cond_t cond_packer;        //Condition variable for packer
+pthread_cond_t cond_deliverer;     //Condition variable for deliverer
+
+//Function prototypes
 void *order(void *x);
 void printStatistics(void);
 void findMax(int sec, int* max);
@@ -11,46 +23,44 @@ void acceptOrder(int id, int numberOfPizzas, int pizzas []);
 void declineOrder(int id);
 void initAndDestroy(int choice);
 
-int Ncook = 10;
-int Noven = 15;
-int Npacker = 2;
-int Ndeliverer = 10;
-int Torderlow = 1;
-int Torderhigh = 3;
-int Norderlow = 1;
-int Norderhigh = 5;
-double Pplain = 0.6;
-int Tpaymentlow = 1;
-int Tpaymenthigh = 3;
-double Pfail = 0.1;
-int Cplain = 10;
-int Cspecial = 12;
-int Tprep = 1;  
-int Tbake = 10;
-int Tpack = 1;
-int Tdellow = 5;
-int Tdelhigh = 15;
-int profit = 0;
-int countPlain = 0;
-int countSpecial = 0;
-int countSuccess = 0;
-int countFail = 0;
-int coolingTime = 0;
-int sumTime = 0;
-int maxTime = 0;
-int maxTimeCooling = 0;
-int avgTime = 0;
-int avgTimeCooling = 0;
-int counterOrder = 0;
-int errorFlag = 0;
+//Global variables
+int Ncook = 10;                   //Number of available cooks
+int Noven = 15;                   //Number of available ovens
+int Npacker = 2;                  //Number of available packers
+int Ndeliverer = 10;              //Number of available deliverers
+int Torderlow = 1;                //Minimum time between orders
+int Torderhigh = 3;               //Maximum time between orders
+int Norderlow = 1;                //Minimum number of pizzas in an order
+int Norderhigh = 5;               //Maximum number of pizzas in an order
+double Pplain = 0.6;              //Probability of a plain pizza
+int Tpaymentlow = 1;              //Minimum time for payment
+int Tpaymenthigh = 3;             //Maximum time for payment
+double Pfail = 0.1;               //Probability of a payment failure
+int Cplain = 10;                  //Cost of a plain pizza
+int Cspecial = 12;                //Cost of a special pizza
+int Tprep = 1;                    //Time to prepare a pizza
+int Tbake = 10;                   //Time to bake a pizza
+int Tpack = 1;                    //Time to pack a pizza
+int Tdellow = 5;                  //Minimum time for delivery
+int Tdelhigh = 15;                //Maximum time for delivery
+int profit = 0;                   //Total profit
+int countPlain = 0;               //Number of plain pizzas sold
+int countSpecial = 0;             //Number of special pizzas sold
+int countSuccess = 0;             //Number of successful orders
+int countFail = 0;                //Number of failed orders
+int coolingTime = 0;              //Total cooling time
+int sumTime = 0;                  //Total service time
+int maxTime = 0;                  //Maximum service time
+int maxTimeCooling = 0;           //Maximum cooling time
+int avgTime = 0;                  //Average service time
+int avgTimeCooling = 0;           //Average cooling time
+int counterOrder = 0;             //Counter for tracking number of orders
+int errorFlag = 0;                //Flag to indicate memory allocation error
 
-int rc;
-unsigned int seed;
-int Ncust;
-struct timespec start_time,start_time_cooling, end_timeX, end_timeY, end_time;
-_Thread_local int secondsX;
-_Thread_local int secondsY;
-int secondsCooling;
-double seconds;
+unsigned int seed;                //Seed for random number generation
+int Ncust;                        //Number of customers
+int secondsX;                     //Time for preparation
+int secondsY;                     //Time for delivery
+int secondsCooling;               //Cooling time
 
 #endif
