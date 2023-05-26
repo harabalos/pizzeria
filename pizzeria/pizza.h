@@ -1,8 +1,8 @@
 #ifndef pizza_h
 #define pizza_h
 
-pthread_mutex_t lock;
-pthread_cond_t cond;
+pthread_mutex_t lock_cook, lock_oven, lock_packer, lock_deliverer, lock_statistics;
+pthread_cond_t cond_cook, cond_oven, cond_packer, cond_deliverer;
 
 void *order(void *x);
 void printStatistics(void);
@@ -45,6 +45,7 @@ int maxTimeCooling = 0;
 int avgTime = 0;
 int avgTimeCooling = 0;
 int counterOrder = 0;
+int errorFlag = 0;
 
 int rc;
 unsigned int seed;

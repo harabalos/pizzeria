@@ -14,12 +14,18 @@ int main(int argc, char *argv[])  {
     }
     Ncust = atoi(argv[1]);
     seed = atoi(argv[2]);
-    int rc;
     int id[Ncust];
     pthread_t threads[Ncust];
 
-    pthread_mutex_init(&lock, NULL);
-    pthread_cond_init(&cond, NULL);
+    pthread_mutex_init(&lock_statistics, NULL);
+    pthread_mutex_init(&lock_cook, NULL);
+    pthread_mutex_init(&lock_oven, NULL);
+    pthread_mutex_init(&lock_packer, NULL);
+    pthread_mutex_init(&lock_deliverer, NULL);
+    pthread_cond_init(&cond_cook, NULL);
+    pthread_cond_init(&cond_oven, NULL);
+    pthread_cond_init(&cond_packer, NULL);
+    pthread_cond_init(&cond_deliverer, NULL);
 
 
     for (int i = 0; i < Ncust; i++) {
@@ -27,21 +33,40 @@ int main(int argc, char *argv[])  {
         clock_gettime(CLOCK_REALTIME,&start_time);
         id[i] = i+1;
         printf("Customer %d is ordering.\n", i+1);
-        rc = pthread_create(&threads[i], NULL, order, &id[i]);
+        if(pthread_create(&threads[i], NULL, order, &id[i]) != 0){
+            perror("Failed to create thread!");
+            return 1;
+        }
         int nextCustomer = rand_r(&seed) % (Torderhigh - Torderlow + 1) + Torderlow;
         sleep(nextCustomer);
     }
 
     for (int i = 0; i < Ncust; i++) {
-        pthread_join(threads[i], NULL);
+        if(pthread_join(threads[i], NULL) != 0){
+            perror("Failed to join thread!");
+            return 2;
+        }
     }
+    
+    if (errorFlag) {
+        perror("Error allocating memory for pizzas");
+        return 3;
+    }
+    
     avgTime = sumTime / countSuccess;
     avgTimeCooling = coolingTime / countSuccess;
     printStatistics();
 
-    pthread_mutex_destroy(&lock);
-    pthread_cond_destroy(&cond);
-
+    pthread_mutex_destroy(&lock_statistics);
+    pthread_mutex_destroy(&lock_cook);
+    pthread_mutex_destroy(&lock_oven);
+    pthread_mutex_destroy(&lock_packer);
+    pthread_mutex_destroy(&lock_deliverer);
+    pthread_cond_destroy(&cond_cook);
+    pthread_cond_destroy(&cond_oven);
+    pthread_cond_destroy(&cond_packer);
+    pthread_cond_destroy(&cond_deliverer);
+    
     return 0;
 
 }
@@ -51,17 +76,22 @@ void *order(void *x){
     int id = *(int *)x;
     printf("Order %d started\n", id);
     
+    pthread_mutex_lock(&lock_deliverer);
     counterOrder++;
-    
-    int isLastOrder = 0;
-    if (id == Ncust){
-        isLastOrder = 1;
-    }
+    pthread_mutex_unlock(&lock_deliverer);
     
     int numberOfPizzas = rand_r(&seed) % (Norderhigh - Norderlow +1) + Norderlow;
-    int pizzas[numberOfPizzas];
+    
+    int* pizzas = malloc(numberOfPizzas * sizeof(int));
+    if (pizzas == NULL) {
+        errorFlag = 1;
+        pthread_exit(NULL);
+    }
+    
     int paymentTime = rand_r(&seed) % (Tpaymenthigh - Tpaymentlow + 1) + Tpaymentlow;
+    
     double acceptedCard = (double)rand_r(&seed) / RAND_MAX;
+    
     sleep(paymentTime);
     
     if(acceptedCard > Pfail){
@@ -69,56 +99,71 @@ void *order(void *x){
     }else{
         declineOrder(id);
     }
-     
-    rc = pthread_mutex_lock(&lock);
+
+    pthread_mutex_lock(&lock_cook);
     while (Ncook == 0) {
         printf("Order %d did not find available cook. Blocked...\n", id);
-        rc = pthread_cond_wait(&cond, &lock);
+        pthread_cond_wait(&cond_cook, &lock_cook);
     }
     printf("Order %d is being prepared.\n", id);
     Ncook--;
-    rc = pthread_mutex_unlock(&lock);
+    pthread_mutex_unlock(&lock_cook);
 
     sleep(Tprep);
 
-    rc = pthread_mutex_lock(&lock);
+    pthread_mutex_lock(&lock_oven);
     while (Noven < numberOfPizzas) {
         printf("Order %d did not find available ovens for all the pizzas at the same time. Blocked...\n", id);
-        rc = pthread_cond_wait(&cond, &lock);
+        pthread_cond_wait(&cond_oven, &lock_oven);
     }
     printf("Order %d is cooking.\n", id);
     Noven-=numberOfPizzas;
-    rc = pthread_mutex_unlock(&lock);
+    pthread_mutex_unlock(&lock_oven);
     
+    
+    pthread_mutex_lock(&lock_cook);
     Ncook++;
+    pthread_cond_signal(&cond_cook);
+    pthread_mutex_unlock(&lock_cook);
+
+    
     sleep(Tbake);
     clock_gettime(CLOCK_REALTIME,&start_time_cooling);
     
-    rc = pthread_mutex_lock(&lock);
+    pthread_mutex_lock(&lock_packer);
     while (Npacker == 0) {
         printf("Order %d did not find available packer. Blocked...\n", id);
-        rc = pthread_cond_wait(&cond, &lock);
+        pthread_cond_wait(&cond_packer, &lock_packer);
     }
     Npacker--;
-    rc = pthread_mutex_unlock(&lock);
+    pthread_mutex_unlock(&lock_packer);
 
     sleep(Tpack * numberOfPizzas);
     //X time
     clock_gettime(CLOCK_REALTIME,&end_timeX);
     secondsX = (int)(end_timeX.tv_sec - start_time.tv_sec);
     printf("Order %d has been prepared in %d minutes\n",id,secondsX);
+    
+    pthread_mutex_lock(&lock_packer);
     Npacker++;
+    pthread_cond_signal(&cond_packer);
+    pthread_mutex_unlock(&lock_packer);
+    
+    pthread_mutex_lock(&lock_oven);
     Noven+=numberOfPizzas;
+    pthread_cond_signal(&cond_oven);
+    pthread_mutex_unlock(&lock_oven);
+ 
 
     
     int deliveryTime = rand_r(&seed) % (Tdelhigh - Tdellow + 1) + Tdellow;
-    rc = pthread_mutex_lock(&lock);
+    pthread_mutex_lock(&lock_deliverer);
     while (Ndeliverer == 0) {
         printf("Order %d did not find available deliverer. Blocked...\n", id);
-        rc = pthread_cond_wait(&cond, &lock);
+        pthread_cond_wait(&cond_deliverer, &lock_deliverer);
     }
     Ndeliverer--;
-    rc = pthread_mutex_unlock(&lock);
+    pthread_mutex_unlock(&lock_deliverer);
     
     sleep(deliveryTime);
     //Y time
@@ -127,23 +172,26 @@ void *order(void *x){
     secondsCooling = (int)(end_timeY.tv_sec - start_time_cooling.tv_sec);
     printf("Order %d has been delived in %d minutes\n",id, secondsY);
     
-    if(counterOrder<sizeof(id)){
+    pthread_mutex_lock(&lock_deliverer);
+    if (counterOrder < sizeof(id)) {
         sleep(deliveryTime);
         Ndeliverer++;
-    }else{
+    } else {
         sleep(2);
         Ndeliverer++;
     }
+    pthread_mutex_unlock(&lock_deliverer);
 
-    //total time
-    sumTime+= secondsY;
-    coolingTime+=secondsCooling;
+    pthread_mutex_lock(&lock_statistics);
+    sumTime += secondsY;
+    coolingTime += secondsCooling;
+    pthread_mutex_unlock(&lock_statistics);
+
 
     findMax(secondsY, &maxTime);
     findMax(secondsCooling, &maxTimeCooling);
     
-    
-    rc = pthread_cond_signal(&cond);
+    free(pizzas);
     pthread_exit(NULL);
 }
 
@@ -167,6 +215,7 @@ void printStatistics(void){
 
 
 void acceptOrder(int id, int numberOfPizzas, int pizzas []) {
+    pthread_mutex_lock(&lock_statistics);
     printf("The order %d has been accepted!\n", id);
     countSuccess++;
     for (int i = 0; i < numberOfPizzas; i++) {
@@ -181,11 +230,14 @@ void acceptOrder(int id, int numberOfPizzas, int pizzas []) {
             countSpecial++;
         }
     }
+    pthread_mutex_unlock(&lock_statistics);
 }
 
 
 void declineOrder(int id) {
+    pthread_mutex_lock(&lock_statistics);
     printf("The order %d has been declined!\n", id);
     countFail++;
+    pthread_mutex_unlock(&lock_statistics);
     pthread_exit(NULL);
 }
